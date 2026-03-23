@@ -700,7 +700,7 @@ Supported queries:
 { "query_type": "neighborhood", "node_id": "123", "depth": 1 }
 { "query_type": "aggregate", "target_label": "Product", "counting_label": "BillingDocument" }`;
 
-    const ANTHROPIC_KEY = import.meta.env ? import.meta.env.VITE_ANTHROPIC_API_KEY : '';
+    const ANTHROPIC_KEY = '__RENDER_API_KEY_INJECT__';
     
     // Fallback Mock execution if CORS blocks or no key
     const mockResponses = {

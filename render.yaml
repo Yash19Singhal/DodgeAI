@@ -2,7 +2,7 @@ services:
   - type: web
     name: o2c-graph-system
     env: static
-    buildCommand: ""
+    buildCommand: "sed -i s/__RENDER_API_KEY_INJECT__/$ANTHROPIC_API_KEY/g ./src/js/app.js"
     staticPublishPath: ./src
     envVars:
       - key: ANTHROPIC_API_KEY
