@@ -13,12 +13,13 @@ Key functional requirements included:
 4. Implementing guardrails against off-topic questions.
 5. Detecting broken or incomplete O2C flows.
 
-*Prompts Used included:*
-- "Read all the JSONL files from the dataset and construct an in-memory graph with [specific nodes and named relationship types] -> save to graph.json"
-- "Build the visualization panel using D3.js force-directed layout... Dark themed UI, 70/30 split layout... click highlight... expand buttons."
-- "Use the Anthropic Claude API... write a detailed prompt... output JSON query plan first... guardrails."
-- "Add the broken/incomplete O2C flow detection feature... analyzeBrokenFlows()... 1. summary stats bar, 2. clicking filters graph, 3. wire to chat for instant response."
-- "Prepare the app for deployment on Render... fully static site (no backend server)... write the README... push everything to my GitHub repository."
+*Exact Prompts Used included:*
+1. **Initial Architecture:** *"I am building a Graph-Based Data Modeling and Query System for an SAP Order-to-Cash dataset as part of a Forward Deployed Engineer assignment... A context graph system with an LLM-powered query interface. The dataset is converted into a graph of interconnected entities. This graph is visualized in a UI..."*
+2. **Data Layer:** *"Now build the data ingestion layer. Read all the JSONL files from the dataset and construct an in-memory graph with [Nodes: SalesOrder, Delivery...] [Edges: HAS_ITEM, FULFILLED_BY...] Save this graph to a JSON file (data/graph.json)."*
+3. **Frontend UI:** *"Now build the graph visualization panel using D3.js force-directed layout. Requirements: Dark themed UI, split layout (graph left 70%, chat 30%). Nodes colored by entity type. On node click: show side panel with metadata. On click highlight connected nodes. Support zoom/pan, legend, filter panel."*
+4. **LLM Connection:** *"LLM Integration: Use the Anthropic Claude API. Write a detailed system prompt that gives Claude the full schema. Tell Claude to output a JSON query plan first, which frontend executes against in-memory graph, then Claude uses results to answer. Strict guardrail for off-topic."*
+5. **Flow Analytics:** *"Now add the broken/incomplete O2C flow detection feature. Build a function analyzeBrokenFlows() that scans all sales orders and classifies each one: COMPLETE, DELIVERED_NOT_BILLED, BILLED_NOT_PAID, CANCELLED, PARTIAL. Display summary stats bar. Clicking a category filters the graph. Wire this into the chat for instant accurate answers."*
+6. **Deployment:** *"Now prepare the app for deployment and write the README. Make sure the app works as a fully static site (no backend server required). Create a render.yaml for Render deployment. Write README.md with exact sections [Overview, Architecture, Schema, Guardrails, Broken Flow, Setup, Example Queries]."*
 
 ## 2. Architecture Decisions & Reasoning
 - **D3.js Force-Directed Graph:** Chose pure vanilla JavaScript with D3 (v7). D3 affords high-performance rendering of the complex entity relationships (1,262 nodes, 1,507 edges) directly onto an SVG canvas. Custom link forces (`d3.forceLink`) ensure connected nodes stay grouped naturally without requiring heavy frameworks like Cytoscape or React.
