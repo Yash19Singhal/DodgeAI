@@ -684,6 +684,18 @@ document.getElementById('chat-send').addEventListener('click', async () => {
   input.value = '';
   const loadingId = appendLoadingIndicator();
   
+  // Compute fallback response OUTSIDE try so catch can use it
+  const mockResponses = {
+      "highest": "Based on the graph data, the products with the most billing documents can be found by expanding SalesOrderItem nodes and tracing BILLED_AS edges.",
+      "flow": "The O2C flow can be traced by expanding each SalesOrder node and following HAS_ITEM → FULFILLED_BY → BILLED_AS → PAID_VIA edges.",
+      "highest total": "Customer billing totals are computed by aggregating BillingDocument amounts linked via SOLD_TO edges.",
+      "shipping": "Plant shipping volumes are found by counting Delivery nodes connected via SHIPPED_FROM."
+  };
+  let simulatedResponse = "Use the graph visualization to explore nodes and edges. Click + to expand connected entities.";
+  for (const k in mockResponses) {
+      if (valLower.includes(k)) simulatedResponse = mockResponses[k];
+  }
+  
   try {
     const SYSTEM_PROMPT = `You are a Graph Query Agent expert in the SAP Order-to-Cash (O2C) domain.
 You have access to an in-memory graph containing nodes (SalesOrder, SalesOrderItem, Delivery, DeliveryItem, BillingDocument, BillingDocumentItem, Payment, JournalEntry, Customer, Product, Plant).
@@ -701,19 +713,6 @@ Supported queries:
 { "query_type": "aggregate", "target_label": "Product", "counting_label": "BillingDocument" }`;
 
     const ANTHROPIC_KEY = '__RENDER_API_KEY_INJECT__';
-    
-    // Fallback Mock execution if CORS blocks or no key
-    const mockResponses = {
-        "highest": "Based on the graph context, Product 'PROD-A' has the highest number of billing documents (124 documents).",
-        "flow": "The flow for billing document 90504298 traces back to Sales Order 100451. It has been paid via Payment P-30291 and recorded in JournalEntry JE-88312.",
-        "highest total": "Customer 'CUST-009' has the highest total billed amount across 18 billing documents.",
-        "shipping": "Plant 'PLANT-10' is shipping the most deliveries (420 deliveries)."
-    };
-    
-    let simulatedResponse = "Graph queried successfully but no LLM connection available to parse results. Ensure API key and CORS proxy are configured.";
-    for (const k in mockResponses) {
-        if (valLower.includes(k)) simulatedResponse = mockResponses[k];
-    }
 
     if (!ANTHROPIC_KEY || ANTHROPIC_KEY === 'your_key_here') {
        throw new Error("Missing or invalid Anthropic API key in .env file");
@@ -906,14 +905,14 @@ function analyzeBrokenFlows() {
   const inEdges = {};
   allNodes.forEach(n => { outEdges[n.id] = []; inEdges[n.id] = []; });
   allEdges.forEach(e => {
-    outEdges[e.source].push(e);
-    inEdges[e.target].push(e);
+    if (outEdges[e.source]) outEdges[e.source].push(e);
+    if (inEdges[e.target]) inEdges[e.target].push(e);
   });
 
   const salesOrders = allNodes.filter(n => n.label === 'SalesOrder');
   
   salesOrders.forEach(so => {
-    const items = outEdges[so.id].filter(e => nodeMap[e.target].label === 'SalesOrderItem').map(e => nodeMap[e.target]);
+    const items = (outEdges[so.id] || []).filter(e => nodeMap[e.target] && nodeMap[e.target].label === 'SalesOrderItem').map(e => nodeMap[e.target]);
     if (items.length === 0) return;
 
     let hasDelivery = false;
@@ -924,21 +923,23 @@ function analyzeBrokenFlows() {
     let anyItemBilled = false;
 
     items.forEach(item => {
-      const delItemEdges = outEdges[item.id].filter(e => e.label === 'FULFILLED_BY');
+      const delItemEdges = (outEdges[item.id] || []).filter(e => e.type === 'FULFILLED_BY');
       if (delItemEdges.length > 0) hasDelivery = true;
 
-      const billItemEdges = outEdges[item.id].filter(e => e.label === 'BILLED_AS');
+      const billItemEdges = (outEdges[item.id] || []).filter(e => e.type === 'BILLED_AS');
       if (billItemEdges.length > 0) {
         anyItemBilled = true;
         billItemEdges.forEach(be => {
           const bdItem = nodeMap[be.target];
-          const bdEdges = outEdges[bdItem.id].filter(e => e.label === 'BELONGS_TO');
+          if (!bdItem) return;
+          const bdEdges = (outEdges[bdItem.id] || []).filter(e => e.type === 'BELONGS_TO');
           bdEdges.forEach(bde => {
             const bd = nodeMap[bde.target];
+            if (!bd) return;
             hasBilling = true;
-            const bdOut = outEdges[bd.id];
-            if (bdOut.some(e => e.label === 'PAID_VIA')) hasPayment = true;
-            if (bdOut.some(e => e.label === 'CANCELS') || inEdges[bd.id].some(e => e.label === 'CANCELS')) hasCancel = true;
+            const bdOut = outEdges[bd.id] || [];
+            if (bdOut.some(e => e.type === 'PAID_VIA')) hasPayment = true;
+            if (bdOut.some(e => e.type === 'CANCELS') || (inEdges[bd.id] || []).some(e => e.type === 'CANCELS')) hasCancel = true;
           });
         });
       } else {
