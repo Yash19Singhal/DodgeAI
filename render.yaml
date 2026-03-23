@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: o2c-graph-system
+    env: static
+    buildCommand: ""
+    staticPublishPath: ./src
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false

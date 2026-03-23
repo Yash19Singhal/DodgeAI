@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAP O2C Graph Explorer</title>
+  <meta name="description" content="Graph-Based Data Modeling and Query System for SAP Order-to-Cash" />
+  <link rel="stylesheet" href="css/style.css" /> <!-- Custom CSS -->
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading O2C graph data…</div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<div id="app">
+
+  <!-- ── Top Bar ─────────────────────────────────────────── -->
+  <header id="topbar">
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/>
+        <line x1="12" y1="8" x2="5" y2="16"/><line x1="12" y1="8" x2="19" y2="16"/>
+      </svg>
+      SAP O2C Graph Explorer
+    </div>
+    <span class="badge">Order-to-Cash</span>
+    <div class="spacer"></div>
+    <div class="stats">
+      <span>Nodes: <strong id="stat-nodes">—</strong></span>
+      <span>Edges: <strong id="stat-edges">—</strong></span>
+    </div>
+  </header>
+
+  <!-- ── Flow Analysis Bar ───────────────────────────────── -->
+  <div id="flow-stats-bar">
+    <div class="flow-title">O2C Flow Analysis:</div>
+    <div class="flow-stat" id="flow-complete" data-status="COMPLETE">
+      <div class="flow-dot complete"></div>Complete: <span>0</span>
+    </div>
+    <div class="flow-stat" id="flow-del-no-bill" data-status="DELIVERED_NOT_BILLED">
+      <div class="flow-dot warning"></div>Delivered / No Bill: <span>0</span>
+    </div>
+    <div class="flow-stat" id="flow-bill-no-paid" data-status="BILLED_NOT_PAID">
+      <div class="flow-dot warning2"></div>Billed / Unpaid: <span>0</span>
+    </div>
+    <div class="flow-stat" id="flow-partial" data-status="PARTIAL">
+      <div class="flow-dot partial"></div>Partial: <span>0</span>
+    </div>
+    <div class="flow-stat" id="flow-cancelled" data-status="CANCELLED">
+      <div class="flow-dot error"></div>Cancelled: <span>0</span>
+    </div>
+    <div style="flex:1"></div>
+    <button class="flow-clear-btn" id="flow-clear-filter" style="display:none">Clear Filter</button>
+  </div>
+
+  <!-- ── Main Layout ─────────────────────────────────────── -->
+  <div id="main">
+
+    <!-- ── Graph Panel (70%) ───────────────────────────── -->
+    <div id="graph-panel" style="position:relative">
+
+      <!-- Toolbar -->
+      <div id="graph-toolbar">
+        <button class="tool-btn" id="reset-btn" title="Reset to root nodes">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.28"/></svg>
+          Reset
+        </button>
+        <div class="tool-sep"></div>
+        <button class="tool-btn" id="zoom-fit" title="Fit graph to screen">⊞ Fit</button>
+        <button class="tool-btn" id="zoom-in"  title="Zoom in">+</button>
+        <button class="tool-btn" id="zoom-out" title="Zoom out">−</button>
+        <div class="tool-sep"></div>
+        <span style="font-size:11px;color:var(--text-muted)">Click + to expand nodes  ·  Drag to move  ·  Scroll to zoom</span>
+      </div>
+
+      <!-- Metadata panel (slides in from left over graph) -->
+      <div id="meta-panel">
+        <div id="meta-panel-header">
+          <div id="meta-panel-title">Node Details</div>
+          <button id="meta-panel-close" title="Close">✕</button>
+        </div>
+        <div id="meta-panel-body"></div>
+      </div>
+
+      <!-- Canvas -->
+      <div id="graph-canvas-container">
+        <svg id="graph-canvas"></svg>
+
+        <!-- Zoom controls -->
+        <div id="zoom-controls">
+          <button class="zoom-btn" id="zc-in"  onclick="document.getElementById('zoom-in').click()">+</button>
+          <button class="zoom-btn" id="zc-fit" onclick="document.getElementById('zoom-fit').click()">⊞</button>
+          <button class="zoom-btn" id="zc-out" onclick="document.getElementById('zoom-out').click()">−</button>
+        </div>
+
+        <!-- Legend (bottom-right) -->
+        <div id="legend">
+          <div id="legend-header">
+            <span>Node Types</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="legend-items" id="legend-items"></div>
+        </div>
+
+        <!-- Filter Panel (top-right) -->
+        <div id="filter-panel">
+          <button id="filter-toggle">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            Filter
+          </button>
+          <div id="filter-dropdown">
+            <div class="filter-header">Show / Hide Node Types</div>
+            <div id="filter-items"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Chat Panel (30%) ──────────────────────────────── -->
+    <div id="chat-panel">
+      <div id="chat-header">
+        <h2>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          O2C Query Interface
+        </h2>
+        <div class="chat-status">
+          <div class="chat-dot ready"></div>
+          Ready
+        </div>
+      </div>
+
+      <div id="chat-messages">
+
+        <!-- Welcome card -->
+        <div class="placeholder-message">
+          <div class="pm-icon">🗃️</div>
+          <div class="pm-title">SAP Order-to-Cash Assistant</div>
+          <div class="pm-body">
+            Ask natural language questions about the O2C dataset.
+            The system translates them into SQL and returns data-backed answers.
+          </div>
+        </div>
+
+        <!-- Example queries -->
+        <div style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:2px 0">
+          Example queries
+        </div>
+        <div class="example-queries">
+          <div class="example-q">
+            <span class="eq-icon">🔍</span>
+            <span>Which products are associated with the highest number of billing documents?</span>
+          </div>
+          <div class="example-q">
+            <span class="eq-icon">🔗</span>
+            <span>Trace the full O2C flow of billing document 90504298</span>
+          </div>
+          <div class="example-q">
+            <span class="eq-icon">⚠️</span>
+            <span>Identify sales orders that have broken or incomplete flows</span>
+          </div>
+          <div class="example-q">
+            <span class="eq-icon">💰</span>
+            <span>Which customers have the highest total billed amount?</span>
+          </div>
+          <div class="example-q">
+            <span class="eq-icon">🏭</span>
+            <span>Which plants are shipping the most deliveries?</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Input -->
+      <div id="chat-input-area">
+        <div id="chat-input-row">
+          <textarea
+            id="chat-input"
+            placeholder="Ask a question about the O2C dataset…"
+            rows="2"
+          ></textarea>
+          <button id="chat-send" title="Send">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);text-align:center">
+          LLM query engine connects in the next step
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#main -->
+</div><!-- /#app -->
+
+<!-- D3.js v7 -->
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="js/app.js?v=4"></script>
+</body>
+</html>

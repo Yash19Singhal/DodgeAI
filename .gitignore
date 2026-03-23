@@ -1,0 +1,27 @@
+# Environments
+.env
+
+# MacOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+env.bak/
+venv.bak/
+
+# Node
+node_modules/
+dist/
+
+# Logs
+*.log
+
+# Windows
+Thumbs.db
